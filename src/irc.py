@@ -18,9 +18,9 @@ class IRC:
 		self.msgQueue = []
 		
 
+		#Command character, hardcoded
+		self.cchar = "."
 
-		#ADDED BY MARK/THYME
-		cchar = "."
 		
 		self.api = api.API(self.wrapper, "IRC", internal=True)
 		self.api.registerEvent("server.starting", self.onServerStarting)
@@ -223,7 +223,7 @@ class IRC:
 			def args(i):
 				try: 
 					temp = message.split(" ")[i]
-					if temp[:1] == cchar:
+					if temp[:1] == self.cchar:
 						return temp[1:]
 					return temp
 				except: return ""
@@ -265,7 +265,7 @@ class IRC:
 	
 				elif args(0) == "about":
 						msg("Wrapper.py by benbaptist - Version %s (build #%d)" % (Config.version, globals.build))
-				elif args(0) == 'help':
+				elif (args(0) == 'help' or args(0) == ""):
 					# eventually I need to make help only one or two lines, to prevent getting kicked/banned for spam
 					msg("run [command] - run command on server")
 					msg("togglebackups - temporarily turn backups on or off. this setting is not permanent and will be lost on restart")
@@ -350,7 +350,8 @@ class IRC:
 								msg("No new stable Wrapper.py versions available.")
 							elif globals.type == "dev":
 								msg("No new development Wrapper.py versions available.")
-					elif args(0)[:1] == cchar:
+				#firstchar = args(0)
+				#if firstchar[:1] == self.cchar:
 						msg('Unknown command. Type help for more commands')
 	def args(self, i):
 		try:
