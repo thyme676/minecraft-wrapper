@@ -350,7 +350,7 @@ class IRC:
 								msg("No new stable Wrapper.py versions available.")
 							elif globals.type == "dev":
 								msg("No new development Wrapper.py versions available.")
-					elif arg(0)[:1] == cchar:
+					elif args(0)[:1] == cchar:
 						msg('Unknown command. Type help for more commands')
 	def args(self, i):
 		try:
