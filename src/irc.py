@@ -17,6 +17,11 @@ class IRC:
 		self.ready = False
 		self.msgQueue = []
 		
+
+
+		#ADDED BY MARK/THYME
+		cchar = "."
+		
 		self.api = api.API(self.wrapper, "IRC", internal=True)
 		self.api.registerEvent("server.starting", self.onServerStarting)
 		self.api.registerEvent("server.started", self.onServerStarted)
@@ -216,7 +221,11 @@ class IRC:
 			message = " ".join(self.line.split(" ")[3:])[1:].strip("\n").strip("\r")
 			
 			def args(i):
-				try: return message.split(" ")[i]
+				try: 
+					temp = message.split(" ")[i]
+					if temp[:1] == cchar:
+						return temp[1:]
+					return temp
 				except: return ""
 			def argsAfter(i):
 				try: return " ".join(message.split(" ")[i:])
@@ -238,129 +247,111 @@ class IRC:
 					else:
 						self.wrapper.callEvent("irc.message", {"nick": nick, "channel": channel, "message": message})
 						self.log.info("[%s] <%s> %s" % (channel, nick, message))
-			elif self.config["IRC"]["control-from-irc"]:
 				self.log.info("[PRIVATE] (%s) %s" % (nick, message))
 				def msg(string):
 					self.log.info("[PRIVATE] (%s) %s" % (self.config["IRC"]["nick"], string))
 					self.send("PRIVMSG %s :%s" % (nick, string))
-				if self.config["IRC"]["control-irc-pass"] == "password":
-					msg("Please change your password from 'password' in wrapper.properties. I will not allow you to use that password. It's an awful password. Please change it.")	
-					return
-				if "password" in self.config["IRC"]["control-irc-pass"]:
-					msg("Please choose a password that doesn't contain the term 'password'.")
-					return
-				try:
-					self.authorized
-				except:
-					self.authorized = {}
-				if nick in self.authorized:
-					if int(time.time()) - self.authorized[nick] < 900:
-						if args(0) == 'hi':
-							msg('Hey there!')
-						elif args(0) == 'help':
-							# eventually I need to make help only one or two lines, to prevent getting kicked/banned for spam
-							msg("run [command] - run command on server")
-							msg("togglebackups - temporarily turn backups on or off. this setting is not permanent and will be lost on restart")
-							msg("halt - shutdown server and Wrapper.py, will not auto-restart")
-							msg("kill - force server restart without clean shutdown - only use when server is unresponsive")
-							msg("start/restart/stop - start the server/automatically stop and start server/stop the server without shutting down Wrapper")
-							msg("status - show status of the server")
-							msg("check-update - check for new Wrapper.py updates, but don't install them")
-							msg("update-wrapper - check and install new Wrapper.py updates")
-							msg("Wrapper.py Version %s by benbaptist" % self.wrapper.getBuildString())
-							#msg('console - toggle console output to this private message')
-						elif args(0) == 'togglebackups':
-							self.config["Backups"]["enabled"] = not self.config["Backups"]["enabled"]
-							if self.config["Backups"]["enabled"]:
-								msg('Backups are now on.')
-							else:
-								msg('Backups are now off.')
-							configure.save()
-						elif args(0) == 'run':
-							if args(1) == '':
-								msg('Usage: run [command]')
-							else:
-								command = " ".join(message.split(' ')[1:])
-								self.server.console(command)
-						elif args(0) == 'halt':
-							self.wrapper.halt = True
-							self.server.console("stop")
-							self.server.changeState(3)
-						elif args(0) == 'restart':
-							self.server.restart("Restarting server from IRC remote")
-							self.server.changeState(3)
-						elif args(0) == 'stop':
-							self.server.console('stop')
-							self.server.stop("Stopped from IRC remote")
-							msg("Server stopping")
-						elif args(0) == 'start':
-							self.server.start()
-							msg("Server starting")
-						elif args(0) == 'kill':
-							self.server.kill("Killing server from IRC remote")
-							msg("Server terminated.")
-						elif args(0) == 'status':
-							if self.server.state == 2: msg("Server is running.")
-							elif self.server.state == 1: msg("Server is currently starting/frozen.")
-							elif self.server.state == 0: msg("Server is stopped. Type 'start' to fire it back up.")
-							elif self.server.state == 3: msg("Server is in the process of shutting down/restarting.")
-							else: msg("Server is in unknown state. This is probably a Wrapper.py bug - report it! (state #%d)" % self.server.state)
-							if self.wrapper.server.getMemoryUsage():
-								msg("Server Memory Usage: %d bytes" % self.wrapper.server.getMemoryUsage())
-						elif args(0) == 'check-update':
-							msg("Checking for new updates...")
-							update = self.wrapper.checkForNewUpdate()
-							if update:
-								version, build, type = update
-								if type == "stable":
-									msg("New Wrapper.py Version %s available! (you have %s)" % (".".join([str(_) for _ in version]), self.wrapper.getBuildString()))
-								elif type == "dev":
-									msg("New Wrapper.py development build %s #%d available! (you have %s #%d)" % (".".join([str(_) for _ in version]),build,Config.version,globals.build))
-								else:
-									msg("Unknown new version: %s | %d | %s" % (version, build, type))
-								msg("To perform the update, type update-wrapper.")
-							else:
-								if globals.type == "stable":
-									msg("No new stable Wrapper.py versions available.")
-								elif globals.type == "dev":
-									msg("No new development Wrapper.py versions available.")
-						elif args(0) == 'update-wrapper':
-							msg("Checking for new updates...")
-							update = self.wrapper.checkForNewUpdate()
-							if update:
-								version, build, type = update
-								if type == "stable":
-									msg("New Wrapper.py Version %s available! (you have %s)" % (".".join([str(_) for _ in version]), self.wrapper.getBuildString()))
-								elif type == "dev":
-									msg("New Wrapper.py development build %s #%d available! (you have %s #%d)" % (".".join(version),build,Config.version,globals.build))
-								else:
-									msg("Unknown new version: %s | %d | %s" % (version, build, type))
-								msg("Performing update..")
-								if self.wrapper.performUpdate(version, build, type):
-									msg("Update completed! Version %s #%d (%s) is now installed. Please reboot Wrapper.py to apply changes." % (version, build, type))
-								else:
-									msg("An error occured while performing update. Please check the Wrapper.py console as soon as possible for an explanation and traceback. If you are unsure of the cause, please file a bug report on http://github.com/benbaptist/minecraft-wrapper.")
-							else:
-								if globals.type == "stable":
-									msg("No new stable Wrapper.py versions available.")
-								elif globals.type == "dev":
-									msg("No new development Wrapper.py versions available.")
-						elif args(0) == "about":
-							msg("Wrapper.py by benbaptist - Version %s (build #%d)" % (Config.version, globals.build))
+				
+				#Commands start here!
+				if args(0) == 'status':
+					if self.server.state == 2: msg("Server is running.")
+					elif self.server.state == 1: msg("Server is currently starting/frozen.")
+					elif self.server.state == 0: msg("Server is stopped. Type 'start' to fire it back up.")
+					elif self.server.state == 3: msg("Server is in the process of shutting down/restarting.")
+					else: msg("Server is in unknown state. This is probably a Wrapper.py bug - report it! (state #%d)" % self.server.state)
+					if self.wrapper.server.getMemoryUsage():
+						msg("Server Memory Usage: %d bytes" % self.wrapper.server.getMemoryUsage())
+			
+	
+				elif args(0) == "about":
+						msg("Wrapper.py by benbaptist - Version %s (build #%d)" % (Config.version, globals.build))
+				elif args(0) == 'help':
+					# eventually I need to make help only one or two lines, to prevent getting kicked/banned for spam
+					msg("run [command] - run command on server")
+					msg("togglebackups - temporarily turn backups on or off. this setting is not permanent and will be lost on restart")
+					msg("halt - shutdown server and Wrapper.py, will not auto-restart")
+					msg("kill - force server restart without clean shutdown - only use when server is unresponsive")
+					msg("start/restart/stop - start the server/automatically stop and start server/stop the server without shutting down Wrapper")
+					msg("status - show status of the server")
+					msg("check-update - check for new Wrapper.py updates, but don't install them")
+					msg("update-wrapper - check and install new Wrapper.py updates")
+					msg("Wrapper.py Version %s by benbaptist" % self.wrapper.getBuildString())
+				#msg('console - toggle console output to this private message')
+				#checking if channel is mine for control, hard coded to me
+				#checking if user is admin. defined in here.
+				if nick == 'thyme':
+					if args(0) == 'hi':
+						msg('Hey there!')
+					elif args(0) == 'togglebackups':
+						self.config["Backups"]["enabled"] = not self.config["Backups"]["enabled"]
+						if self.config["Backups"]["enabled"]:
+							msg('Backups are now on.')
 						else:
-							msg('Unknown command. Type help for more commands')
-					else:
-						msg("Session expired, re-authorize.")
-						del self.authorized[nick]
-				else:
-					if args(0) == 'auth':
-						if args(1) == self.config["IRC"]["control-irc-pass"]:
-							msg("Authorization success! You'll remain logged in for 15 minutes.")
-							self.authorized[nick] = int(time.time())
+							msg('Backups are now off.')
+						configure.save()
+					elif args(0) == 'run':
+						if args(1) == '':
+							msg('Usage: run [command]')
 						else:
-							msg("Invalid password.")
-					else:
-						msg('Not authorized. Type "auth [password]" to login.')
+							command = " ".join(message.split(' ')[1:])
+							self.server.console(command)
+					elif args(0) == 'halt':
+						self.wrapper.halt = True
+						self.server.console("stop")
+						self.server.changeState(3)
+					elif args(0) == 'restart':
+						self.server.restart("Restarting server from IRC remote")
+						self.server.changeState(3)
+					elif args(0) == 'stop':
+						self.server.console('stop')
+						self.server.stop("Stopped from IRC remote")
+						msg("Server stopping")
+					elif args(0) == 'start':
+						self.server.start()
+						msg("Server starting")
+					elif args(0) == 'kill':
+						self.server.kill("Killing server from IRC remote")
+						msg("Server terminated.")
+					elif args(0) == 'check-update':
+						msg("Checking for new updates...")
+						update = self.wrapper.checkForNewUpdate()
+						if update:
+							version, build, type = update
+							if type == "stable":
+								msg("New Wrapper.py Version %s available! (you have %s)" % (".".join([str(_) for _ in version]), self.wrapper.getBuildString()))
+							elif type == "dev":
+								msg("New Wrapper.py development build %s #%d available! (you have %s #%d)" % (".".join([str(_) for _ in version]),build,Config.version,globals.build))
+							else:
+								msg("Unknown new version: %s | %d | %s" % (version, build, type))
+							msg("To perform the update, type update-wrapper.")
+						else:
+							if globals.type == "stable":
+								msg("No new stable Wrapper.py versions available.")
+							elif globals.type == "dev":
+								msg("No new development Wrapper.py versions available.")
+					elif args(0) == 'update-wrapper':
+						msg("Checking for new updates...")
+						update = self.wrapper.checkForNewUpdate()
+						if update:
+							version, build, type = update
+							if type == "stable":
+								msg("New Wrapper.py Version %s available! (you have %s)" % (".".join([str(_) for _ in version]), self.wrapper.getBuildString()))
+							elif type == "dev":
+								msg("New Wrapper.py development build %s #%d available! (you have %s #%d)" % (".".join(version),build,Config.version,globals.build))
+							else:
+								msg("Unknown new version: %s | %d | %s" % (version, build, type))
+							msg("Performing update..")
+							if self.wrapper.performUpdate(version, build, type):
+								msg("Update completed! Version %s #%d (%s) is now installed. Please reboot Wrapper.py to apply changes." % (version, build, type))
+							else:
+								msg("An error occured while performing update. Please check the Wrapper.py console as soon as possible for an explanation and traceback. If you are unsure of the cause, please file a bug report on http://github.com/benbaptist/minecraft-wrapper.")
+						else:
+							if globals.type == "stable":
+								msg("No new stable Wrapper.py versions available.")
+							elif globals.type == "dev":
+								msg("No new development Wrapper.py versions available.")
+					elif arg(0)[:1] == cchar:
+						msg('Unknown command. Type help for more commands')
 	def args(self, i):
 		try:
 			return self.line.split(" ")[i]
