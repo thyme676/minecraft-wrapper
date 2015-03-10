@@ -101,10 +101,11 @@ class IRC:
 		death = payload["death"]
 		self.msgQueue.append("%s %s" % (player, death))
 	def onBackupBegin(self, payload):
-		self.msgQueue.append("Backing up... lag may occur!")
+		#self.msgQueue.append("Backing up... lag may occur!")
+		time.sleep(1)
 	def onBackupEnd(self, payload):
 		time.sleep(1)
-		self.msgQueue.append("Backup complete!")
+		#self.msgQueue.append("Backup complete!")
 	def onBackupFailure(self, payload):
 		if "reasonText" in payload:
 			self.msgQueue.append("ERROR: %s" % payload["reasonText"])
